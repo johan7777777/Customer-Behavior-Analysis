@@ -1,163 +1,187 @@
 import pandas as pd
-import mysql.connector
-from datetime import datetime, timedelta
-
-# Read CSV files
-file_paths = {
-    "customer_journey": "customer_journey.csv",
-    "customer_reviews": "customer_reviews.csv",
-    "customers": "customers.csv",
-    "engagement_data": "engagement_data.csv",
-    "geography": "geography.csv",
-    "products": "products.csv"
-}
-
-dfs = {name: pd.read_csv(path) for name, path in file_paths.items()}
-
-# Fill missing numeric values with column means
-for name, df in dfs.items():
-    dfs[name] = df.fillna(df.mean(numeric_only=True))
-
-# MySQL connection
-conn_mysql = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="Mysql@7"
+import numpy as np
+from mysql.connector import connect
+connection= connect(
+host='localhost',
+port='3306',
+user='root',
+password='Mysql@7'
 )
-cursor_mysql = conn_mysql.cursor()
-print("MySQL connection established!")
+cursor=connection.cursor()
+print(connection.is_connected())
+df0=pd.read_csv('customer_journey.csv')
+df1=pd.read_csv('customer_reviews.csv')
+df2=pd.read_csv('customers.csv')
+df3=pd.read_csv('engagement_data.csv')
+df4=pd.read_csv('geography.csv')
+df5=pd.read_csv('products.csv')
 
-# Create database
-cursor_mysql.execute("CREATE DATABASE IF NOT EXISTS customer_db;")
-cursor_mysql.execute("USE customer_db;")
-print("Database 'customer_db' selected!")
+print(df0.isnull().sum())
+print(df1.isnull().sum())
+print(df2.isnull().sum())
+print(df3.isnull().sum())
+print(df4.isnull().sum())
+print(df5.isnull().sum())
 
-# Create tables
-table_queries = {
-    "products": """
-        CREATE TABLE IF NOT EXISTS products (
-            ProductID INT PRIMARY KEY,
-            ProductName VARCHAR(100),
-            Category VARCHAR(50),
-            Price DECIMAL(10,2)
-        );
-    """,
-    "geography": """
-        CREATE TABLE IF NOT EXISTS geography (
-            GeographyID INT PRIMARY KEY,
-            Country VARCHAR(50),
-            City VARCHAR(50)
-        );
-    """,
-    "customers": """
-        CREATE TABLE IF NOT EXISTS customers (
-            CustomerID INT PRIMARY KEY,
-            CustomerName VARCHAR(100),
-            Email VARCHAR(100),
-            Gender VARCHAR(10),
-            Age INT,
-            GeographyID INT,
-            FOREIGN KEY (GeographyID) REFERENCES geography(GeographyID)
-        );
-    """,
-    "customer_reviews": """
-        CREATE TABLE IF NOT EXISTS customer_reviews (
-            ReviewID INT PRIMARY KEY,
-            CustomerID INT,
-            ProductID INT,
-            Rating INT,
-            ReviewDate DATE,
-            ReviewText TEXT,
-            FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID),
-            FOREIGN KEY (ProductID) REFERENCES products(ProductID)
-        );
-    """,
-    "customer_journey": """
-        CREATE TABLE IF NOT EXISTS customer_journey (
-            JourneyID INT PRIMARY KEY,
-            CustomerID INT,
-            ProductID INT,
-            VisitDate DATE,
-            Stage VARCHAR(50),
-            Action VARCHAR(50),
-            Duration FLOAT,
-            FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID),
-            FOREIGN KEY (ProductID) REFERENCES products(ProductID)
-        );
-    """,
-    "engagement_data": """
-        CREATE TABLE IF NOT EXISTS engagement_data (
-            EngagementID INT PRIMARY KEY,
-            ContentID INT,
-            ContentType VARCHAR(50),
-            Likes INT,
-            EngagementDate DATE,
-            CampaignID INT,
-            ProductID INT,
-            ViewsClicksCombined VARCHAR(50)
-        );
-    """
-}
+df0['Duration'].fillna(df0['Duration'].mean(),inplace=True)
+#1
+cursor.execute("CREATE DATABASE IF NOT EXISTS dummy1;")
+print("MySQL database 'dummy1' created successfully!")
 
-for table, query in table_queries.items():
-    cursor_mysql.execute(query)
-    print(f"Table '{table}' created successfully!")
+cursor.execute("USE dummy1;")  # Select database
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS customer_journey (
+        JourneyID INT,
+        CustomerID INT,
+        ProductID INT,    
+        VisitDate Date,
+        Stage VARCHAR(100),
+        Action VARCHAR(100),  
+        Duration FLOAT
+        
+    );
+""")
+connection.commit()
+print("Table 'customer_journey' created successfully in MySQL!")
+#2
 
-conn_mysql.commit()
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS customer_reviews (
+        ReviewID INT,
+        CustomerID INT,
+        ProductID INT,
+        ReviewDate  Date,
+        Rating INT,
+        ReviewText VARCHAR(2000)
+        
+    );
+""")
+connection.commit()
+print("Table 'customer_reviews' created successfully in MySQL!")
 
-# Insert data into tables
-def insert_data(table, query, data):
-    try:
-        for _, row in data.iterrows():
-            cursor_mysql.execute(query, tuple(row))
-        conn_mysql.commit()
-        print(f"Successfully inserted into '{table}' table.")
-    except Exception as e:
-        print(f"Error inserting into '{table}': {e}")
+#3
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS customers (
+        CustomerID INT,
+        CustomerName VARCHAR(50),
+        Email VARCHAR(50),
+        Gender VARCHAR(50),
+        Age INT,
+        GeographyID INT
+        
+    );
+""")
+connection.commit()
+print("Table 'customer' created successfully in MySQL!")
 
-# Insert into products
-insert_data("products", """
-    INSERT INTO products (ProductID, ProductName, Category, Price)
-    VALUES (%s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE ProductName=VALUES(ProductName), Category=VALUES(Category), Price=VALUES(Price);
-""", dfs["products"])
+#4
 
-# Insert into geography
-insert_data("geography", """
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS engagement_data (
+        EngagementID INT,
+               ContentID INT,
+               ContentType VARCHAR(50),
+               Likes INT,
+               EngagementDate Date,
+               CampaignID INT ,
+               ProductID  INT,
+               ViewsClicksCombined VARCHAR(50)
+        
+    );
+""")
+connection.commit()
+print("Table 'engagement_data' created successfully in MySQL!")
+
+#5
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS geography (
+      GEographyID INT,
+      Country VARCHAR(50),
+      City VARCHAR(50)
+               
+        
+    );
+""")
+connection.commit()
+print("Table 'geography' created successfully in MySQL!")
+#6
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS products (
+        ProductID INT,
+        ProductName VARCHAR(50),
+        Category VARCHAR(50) ,
+        Price INT
+        
+    );
+""")
+connection.commit()
+print("Table 'products' created successfully in MySQL!")
+
+
+#inserting 1
+data_list = df0.values.tolist()
+query = """
+    INSERT INTO customer_journey (JourneyID,CustomerID,ProductID,VisitDate,Stage,Action,Duration)
+    VALUES (%s, %s, %s, %s, %s, %s, %s);
+"""
+cursor.executemany(query, data_list)
+connection.commit()
+print("Data inserted using to_list()")
+
+
+#inserting 2
+data_list = df1.values.tolist()
+query = """
+    INSERT INTO customer_reviews (ReviewID,CustomerID,ProductID,ReviewDate,Rating,ReviewText)
+    VALUES (%s, %s, %s, %s, %s, %s);
+"""
+
+cursor.executemany(query, data_list)
+connection.commit()
+
+print("Data inserted using to_list()")
+
+#inserting 3
+data_list = df2.values.tolist()
+query = """
+    INSERT INTO customers(CustomerID,CustomerName,Email,Gender,Age,GeographyID)
+    VALUES ( %s, %s, %s, %s, %s, %s);
+"""
+cursor.executemany(query, data_list)
+connection.commit()
+print("Data inserted using to_list()")
+#4
+data_list = df3.values.tolist()
+query = """
+    INSERT INTO engagement_data(EngagementID,ContentID,ContentType,Likes,EngagementDate,CampaignID,ProductID,ViewsClicksCombined)
+    VALUES (%s, %s, %s, %s, %s, %s, %s,%s);
+"""
+cursor.executemany(query, data_list)
+connection.commit()
+print("Data inserted using to_list()")
+
+
+
+#5
+data_list = df5.values.tolist()
+query = """
+    INSERT INTO products (ProductID,ProductName,Category,Price)
+    VALUES (%s, %s, %s, %s);
+"""
+cursor.executemany(query, data_list)
+connection.commit()
+print("Data inserted using to_list()")
+#6
+data_list = df4.values.tolist()
+query = """
     INSERT INTO geography (GeographyID, Country, City)
-    VALUES (%s, %s, %s)
-    ON DUPLICATE KEY UPDATE Country=VALUES(Country), City=VALUES(City);
-""", dfs["geography"])
+    VALUES (%s, %s, %s);
+"""
+cursor.executemany(query, data_list)
+connection.commit()
+print("Data inserted into 'geography' using to_list()")
 
-# Insert into customers
-insert_data("customers", """
-    INSERT INTO customers (CustomerID, CustomerName, Email, Gender, Age, GeographyID)
-    VALUES (%s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE CustomerName=VALUES(CustomerName), Email=VALUES(Email), Gender=VALUES(Gender), Age=VALUES(Age), GeographyID=VALUES(GeographyID);
-""", dfs["customers"])
 
-# Insert into customer_reviews
-insert_data("customer_reviews", """
-    INSERT INTO customer_reviews (ReviewID, CustomerID, ProductID, Rating, ReviewDate, ReviewText)
-    VALUES (%s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE Rating=VALUES(Rating), ReviewDate=VALUES(ReviewDate), ReviewText=VALUES(ReviewText);
-""", dfs["customer_reviews"])
 
-# Insert into customer_journey
-insert_data("customer_journey", """
-    INSERT INTO customer_journey (JourneyID, CustomerID, ProductID, VisitDate, Stage, Action, Duration)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE VisitDate=VALUES(VisitDate), Stage=VALUES(Stage), Action=VALUES(Action), Duration=VALUES(Duration);
-""", dfs["customer_journey"])
 
-# Insert into engagement_data
-insert_data("engagement_data", """
-    INSERT INTO engagement_data (EngagementID, ContentID, ContentType, Likes, EngagementDate, CampaignID, ProductID, ViewsClicksCombined)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE ContentType=VALUES(ContentType), Likes=VALUES(Likes), EngagementDate=VALUES(EngagementDate), CampaignID=VALUES(CampaignID), ProductID=VALUES(ProductID), ViewsClicksCombined=VALUES(ViewsClicksCombined);
-""", dfs["engagement_data"])
-
-# Close connection
-cursor_mysql.close()
-conn_mysql.close()
-print("All data inserted successfully!")
