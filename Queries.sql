@@ -7,7 +7,7 @@ GROUP BY p.ProductID, p.ProductName
 ORDER BY ReviewCount DESC;
 
 
-#Finding Common Actions Leading to Successful Conversion
+#2Finding Common Actions Leading to Successful Conversion
 
 #Find out which customer segments have the highest conversion rates.
 
@@ -125,7 +125,7 @@ WHERE Duration IS NOT NULL
 GROUP BY Stage
 ORDER BY Avg_Duration_Seconds DESC;
 
-#drop off
+#1drop off
 WITH journey_data AS (
     SELECT 
         Stage,
@@ -178,7 +178,7 @@ WITH review_analysis AS (
         cr.ProductID, 
         p.ProductName, 
         cr.Rating, 
-        cr.ReviewText,
+        cr.ReviewText, 
         CASE 
             WHEN Rating <= 2 THEN 'Negative'
             WHEN Rating = 3 THEN 'Neutral'
@@ -196,3 +196,10 @@ SELECT
 FROM review_analysis
 GROUP BY Sentiment
 ORDER BY Avg_Rating DESC;
+
+
+#avg duration
+SELECT Stage, AVG(Duration) AS AverageDuration
+FROM customer_journey
+GROUP BY Stage
+ORDER BY AverageDuration DESC;
